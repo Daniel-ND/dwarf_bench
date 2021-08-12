@@ -18,7 +18,7 @@ template <class Key, class Val, class Hasher1, class Hasher2> class CuckooHashta
         
     public:
         explicit CuckooHashtable(const size_t size, sycl::global_ptr<Key> keys, sycl::global_ptr<Val> vals, 
-                                sycl::global_ptr<uint32_t> bitmask, Hasher1 hasher1, Hasher2 hasher2 /*const sycl::stream &out*/):
+                                sycl::global_ptr<uint32_t> bitmask, Hasher1 hasher1, Hasher2 hasher2):
             _size(size), _keys(keys), _vals(vals), _bitmask(bitmask), _hasher1(hasher1), _hasher2(hasher2){}
         
         const std::pair<Val, bool> at(Key key) const {
@@ -37,7 +37,7 @@ template <class Key, class Val, class Hasher1, class Hasher2> class CuckooHashta
 
         bool insert(Key key, Val value) {
             size_t pos = _hasher1(key);
-            for (int cnt = 0; cnt < _size / 3; cnt++) {
+            for (int cnt = 0; cnt < _size / 4; cnt++) {
                 lock(pos, key);
                 if (_keys[pos] == _EMPTY_KEY) {
                     _keys[pos] = key;

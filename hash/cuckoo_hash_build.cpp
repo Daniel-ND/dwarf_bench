@@ -3,14 +3,16 @@
 
 CuckooHashBuild::CuckooHashBuild() : Dwarf("CuckooHashBuild") {}
 const uint32_t EMPTY_KEY = std::numeric_limits<uint32_t>::max();
-const uint32_t WORKGROUP_SIZE = 1;
+const uint32_t WORKGROUP_SIZE = 1; // todo: split work between workgroups
 
 void CuckooHashBuild::_run(const size_t buf_size, Meter &meter) {
   auto opts = meter.opts();
   
-  const std::vector<uint32_t> host_src = /*{0, 4};*/
+  const std::vector<uint32_t> host_src =
      helpers::make_unique_random(buf_size);
 
+  // Optimal load factor for CuckooH2 50%
+  // todo: find best suitable coefficient
   const size_t ht_size = buf_size * 4;
   
   auto sel = get_device_selector(opts);
@@ -20,10 +22,12 @@ void CuckooHashBuild::_run(const size_t buf_size, Meter &meter) {
 
   for (auto it = 0; it < opts.iterations; ++it) {
 
-      MurmurHash3_x86_32 hasher1(ht_size, 4, helpers::make_random()), hasher2(ht_size, 4, helpers::make_random());
+      MurmurHash3_x86_32 hasher1(ht_size, sizeof(uint32_t), helpers::make_random()), 
+                        hasher2(ht_size, sizeof(uint32_t), helpers::make_random());
 
-      std::vector<uint32_t> output(buf_size, 0); //?
-      std::vector<uint32_t> expected(buf_size, 1); //?
+      std::vector<uint32_t> output(buf_size, 0);
+      std::vector<uint32_t> expected(buf_size, 1);
+
       size_t bitmask_sz = (ht_size / 32) ? (ht_size / 32) : 1;
       std::vector<uint32_t> bitmask(bitmask_sz, 0);
       std::vector<uint32_t> keys(ht_size, EMPTY_KEY);
@@ -48,7 +52,6 @@ void CuckooHashBuild::_run(const size_t buf_size, Meter &meter) {
 
         auto clear_keys = q.submit([&](sycl::handler &h) {
           auto keys_acc = keys_buf.get_access(h);
-          auto bitmask_acc = bitmask_buf.get_access(h);
 
           h.parallel_for<class clear_keys>(ht_size, [=](auto &idx) {
             keys_acc[idx] = EMPTY_KEY;

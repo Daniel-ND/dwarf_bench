@@ -37,18 +37,18 @@ template <class Key, class Val, class Hasher1, class Hasher2> class CuckooHashta
 
         bool insert(Key key, Val value) {
             size_t pos = _hasher1(key);
-            for (int cnt = 0; cnt < _size / 3; cnt++) {
-                lock(pos, key);
+            for (int cnt = 0; cnt < _size / 4; cnt++) {
+                lock(pos);
                 if (_keys[pos] == _EMPTY_KEY) {
                     _keys[pos] = key;
                     _vals[pos] = value;
 
-                    unlock(pos, key);
+                    unlock(pos);
                     return true;
                 }
                 std::swap(key, _keys[pos]);
                 std::swap(value, _vals[pos]);
-                unlock(pos, key);
+                unlock(pos);
                 if (pos == _hasher1(key))
                     pos = _hasher2(key);
                 else 
@@ -58,7 +58,7 @@ template <class Key, class Val, class Hasher1, class Hasher2> class CuckooHashta
         }
 
 
-        void lock(size_t pos, Key key) {      
+        void lock(size_t pos) {      
             uint32_t present;
             uint32_t major_idx = pos / elem_sz;
             uint8_t minor_idx = pos % elem_sz;
@@ -69,7 +69,7 @@ template <class Key, class Val, class Hasher1, class Hasher2> class CuckooHashta
             } while (present & mask);
         }
 
-        void unlock(size_t pos, Key key) {
+        void unlock(size_t pos) {
             uint32_t major_idx = pos / elem_sz;
             uint8_t minor_idx = pos % elem_sz;
             uint32_t mask = uint32_t(1) << minor_idx;
